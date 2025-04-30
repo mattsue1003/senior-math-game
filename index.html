@@ -19,6 +19,7 @@
             color: #333;
             font-size: 2em;
             margin-bottom: 20px;
+            text-align: center;
         }
         
         .game-info {
@@ -29,7 +30,7 @@
             padding: 15px;
             border-radius: 10px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            width: 80%;
+            width: 90%;
             max-width: 600px;
             text-align: center;
         }
@@ -39,15 +40,19 @@
             grid-template-columns: repeat(5, 1fr);
             gap: 10px;
             margin: 20px 0;
-            padding: 20px;
+            padding: 15px;
             background: white;
             border-radius: 15px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 500px;
         }
         
         .cell {
-            width: 70px;
-            height: 70px;
+            width: 100%;
+            height: 0;
+            padding-bottom: 100%; /* 使格子保持正方形 */
+            position: relative;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -58,6 +63,18 @@
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.3s;
+            box-sizing: border-box;
+        }
+        
+        .cell-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         
         .cell:hover {
@@ -107,7 +124,7 @@
         }
         
         button {
-            padding: 15px 30px;
+            padding: 15px 20px;
             font-size: 18px;
             background-color: #4a90e2;
             color: white;
@@ -138,17 +155,23 @@
         .difficulty-buttons {
             margin: 20px 0;
             display: flex;
-            gap: 15px;
+            gap: 10px;
             justify-content: center;
+            flex-wrap: wrap; /* 允許在小屏幕上換行 */
+            width: 90%;
+            max-width: 600px;
         }
         
         .difficulty-btn {
-            padding: 10px 20px;
+            padding: 10px 15px;
             font-size: 16px;
             background-color: #f0f0f0;
             color: #333;
             border: 2px solid #ddd;
             border-radius: 8px;
+            white-space: nowrap; /* 防止文字換行 */
+            min-width: 90px; /* 給按鈕一個最小寬度 */
+            text-align: center;
         }
         
         .difficulty-btn.active {
@@ -158,7 +181,7 @@
         }
         
         .score-display {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             color: #2c3e50;
             margin: 20px 0;
@@ -166,10 +189,14 @@
             background: #fff;
             border-radius: 10px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
         }
         
         .instructions {
             max-width: 600px;
+            width: 90%;
             margin: 20px auto;
             padding: 20px;
             background: #fff;
@@ -190,24 +217,73 @@
         .mode-selector {
             margin: 20px 0;
             display: flex;
-            gap: 15px;
+            gap: 10px;
             justify-content: center;
+            width: 90%;
+            max-width: 600px;
         }
         
         .mode-btn {
-            padding: 12px 25px;
+            padding: 12px 20px;
             font-size: 18px;
             background-color: #f0f0f0;
             color: #333;
             border: 2px solid #ddd;
             border-radius: 8px;
             cursor: pointer;
+            min-width: 120px;
+            text-align: center;
         }
         
         .mode-btn.active {
             background-color: #4a90e2;
             color: white;
             border-color: #357abd;
+        }
+        
+        /* 響應式設計 */
+        @media (max-width: 480px) {
+            .cell {
+                font-size: 18px;
+            }
+            
+            .grid {
+                padding: 10px;
+                gap: 5px;
+            }
+            
+            button {
+                padding: 12px 15px;
+                font-size: 16px;
+            }
+            
+            .difficulty-btn {
+                padding: 8px 12px;
+                font-size: 14px;
+                min-width: 80px;
+            }
+            
+            .mode-btn {
+                padding: 10px 15px;
+                font-size: 16px;
+                min-width: 100px;
+            }
+            
+            .score-display {
+                font-size: 18px;
+            }
+        }
+        
+        /* 極小屏幕適配 */
+        @media (max-width: 350px) {
+            .cell {
+                font-size: 16px;
+            }
+            
+            .grid {
+                padding: 5px;
+                gap: 3px;
+            }
         }
     </style>
 </head>
@@ -316,23 +392,28 @@
                     const cell = document.createElement('div');
                     cell.className = 'cell';
                     
+                    // 創建內容容器
+                    const cellContent = document.createElement('div');
+                    cellContent.className = 'cell-content';
+                    
                     if (row === 0 && col === 0) {
-                        cell.textContent = currentMode === 'addition' ? '+' : '×';
+                        cellContent.textContent = currentMode === 'addition' ? '+' : '×';
                         cell.classList.add('edge');
                     } else if (row === 0) {
-                        cell.textContent = topNumbers[col - 1];
+                        cellContent.textContent = topNumbers[col - 1];
                         cell.classList.add('edge');
                     } else if (col === 0) {
-                        cell.textContent = leftNumbers[row - 1];
+                        cellContent.textContent = leftNumbers[row - 1];
                         cell.classList.add('edge');
                     } else {
                         const answer = calculateAnswer(leftNumbers[row - 1], topNumbers[col - 1]);
                         gridData[row][col] = answer;
                         
                         cell.classList.add('clickable');
-                        cell.addEventListener('click', () => handleCellClick(cell, row, col));
+                        cell.addEventListener('click', () => handleCellClick(cellContent, row, col));
                     }
                     
+                    cell.appendChild(cellContent);
                     grid.appendChild(cell);
                 }
             }
@@ -342,7 +423,8 @@
             updateScore();
         }
         
-        function handleCellClick(cell, row, col) {
+        function handleCellClick(cellContent, row, col) {
+            const cell = cellContent.parentNode;
             if (cell.classList.contains('correct') || cell.classList.contains('incorrect') || cell.classList.contains('revealed')) {
                 return;
             }
@@ -352,11 +434,11 @@
             if (userAnswer !== null && userAnswer !== '') {
                 const numAnswer = parseInt(userAnswer);
                 if (numAnswer === gridData[row][col]) {
-                    cell.textContent = numAnswer;
+                    cellContent.textContent = numAnswer;
                     cell.classList.add('correct');
                     score++;
                 } else {
-                    cell.textContent = numAnswer;
+                    cellContent.textContent = numAnswer;
                     cell.classList.add('incorrect');
                 }
                 updateScore();
@@ -368,7 +450,7 @@
             let filledCells = 0;
             
             clickableCells.forEach(cell => {
-                if (cell.textContent) {
+                if (cell.querySelector('.cell-content').textContent) {
                     filledCells++;
                 }
             });
@@ -391,11 +473,12 @@
             let revealedCount = 0;
             
             for (let cell of clickableCells) {
-                if (!cell.textContent) {
+                const cellContent = cell.querySelector('.cell-content');
+                if (!cellContent.textContent) {
                     const row = Math.floor(Array.from(cell.parentNode.children).indexOf(cell) / 5);
                     const col = Array.from(cell.parentNode.children).indexOf(cell) % 5;
                     
-                    cell.textContent = gridData[row][col];
+                    cellContent.textContent = gridData[row][col];
                     cell.classList.add('revealed');
                     revealedCount++;
                     
@@ -423,7 +506,9 @@
         }
         
         // Initialize the game
-        startGame();
+        window.onload = function() {
+            startGame();
+        };
     </script>
 </body>
 </html>
