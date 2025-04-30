@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>方格子數學遊戲 - 長輩友善版</title>
+    <style>
+        body {
+            font-family: Microsoft JhengHei, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        
+        .game-info {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            color: #444;
+            background: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            width: 80%;
+            max-width: 600px;
+            text-align: center;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        
+        .cell {
+            width: 70px;
+            height: 70px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            background-color: #fff;
+            border: 3px solid #ccc;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .cell:hover {
+            background-color: #e8f4fd;
+        }
+        
+        .cell.edge {
+            background-color: #f0f5fa;
+            border-color: #4a90e2;
+            color: #2c3e50;
+        }
+        
+        .cell.clickable {
+            background-color: #ffffff;
+            border-color: #ccc;
+        }
+        
+        .cell.clickable:hover {
+            border-color: #4a90e2;
+            background-color: #e8f4fd;
+        }
+        
+        .cell.correct {
+            background-color: #e6f7e6;
+            border-color: #4caf50;
+            color: #2e7d32;
+        }
+        
+        .cell.incorrect {
+            background-color: #fdeded;
+            border-color: #f44336;
+            color: #c62828;
+        }
+        
+        .cell.revealed {
+            background-color: #fff3e0;
+            border-color: #ff9800;
+            color: #e65100;
+        }
+        
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        button:hover {
+            background-color: #357abd;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        button.secondary {
+            background-color: #f39c12;
+        }
+        
+        button.secondary:hover {
+            background-color: #d68910;
+        }
+        
+        .difficulty-buttons {
+            margin: 20px 0;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .difficulty-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #f0f0f0;
+            color: #333;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        .difficulty-btn.active {
+            background-color: #4a90e2;
+            color: white;
+            border-color: #357abd;
+        }
+        
+        .score-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 20px 0;
+            padding: 15px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .instructions {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            line-height: 1.6;
+        }
+        
+        .instructions h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .mode-selector {
+            margin: 20px 0;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .mode-btn {
+            padding: 12px 25px;
+            font-size: 18px;
+            background-color: #f0f0f0;
+            color: #333;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .mode-btn.active {
+            background-color: #4a90e2;
+            color: white;
+            border-color: #357abd;
+        }
+    </style>
+</head>
+<body>
+    <h1>方格子數學遊戲</h1>
+    
+    <div class="mode-selector">
+        <button class="mode-btn active" onclick="changeMode('addition')">加法練習</button>
+        <button class="mode-btn" onclick="changeMode('multiplication')">乘法練習</button>
+    </div>
+    
+    <div class="difficulty-buttons">
+        <button class="difficulty-btn active" onclick="setDifficulty('easy')">簡單 (1-5)</button>
+        <button class="difficulty-btn" onclick="setDifficulty('medium')">中等 (1-10)</button>
+        <button class="difficulty-btn" onclick="setDifficulty('hard')">困難 (1-20)</button>
+    </div>
+    
+    <div class="game-info" id="gameInfo">點擊開始遊戲，填入空格中的正確答案</div>
+    
+    <div class="grid" id="grid"></div>
+    
+    <div class="score-display" id="scoreDisplay">得分: 0 / 總題數: 0</div>
+    
+    <div class="controls">
+        <button onclick="startGame()">開始新遊戲</button>
+        <button onclick="checkAnswers()">檢查答案</button>
+        <button class="secondary" onclick="revealAnswer()">顯示答案</button>
+    </div>
+    
+    <div class="instructions">
+        <h3>遊戲說明：</h3>
+        <ul>
+            <li>選擇練習模式：加法或乘法</li>
+            <li>選擇難度：簡單、中等或困難</li>
+            <li>頂行和首列有數字，計算它們的加法或乘法結果</li>
+            <li>點擊空白格子，輸入正確答案</li>
+            <li>完成後點擊「檢查答案」查看結果</li>
+            <li>如需幫助，可點擊「顯示答案」</li>
+        </ul>
+    </div>
+
+    <script>
+        let currentMode = 'addition';
+        let currentDifficulty = 'easy';
+        let score = 0;
+        let totalCells = 0;
+        let gridData = [];
+        
+        function changeMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            startGame();
+        }
+        
+        function setDifficulty(difficulty) {
+            currentDifficulty = difficulty;
+            document.querySelectorAll('.difficulty-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            startGame();
+        }
+        
+        function getRandomNumber() {
+            switch(currentDifficulty) {
+                case 'easy':
+                    return Math.floor(Math.random() * 5) + 1;
+                case 'medium':
+                    return Math.floor(Math.random() * 10) + 1;
+                case 'hard':
+                    return Math.floor(Math.random() * 20) + 1;
+                default:
+                    return Math.floor(Math.random() * 5) + 1;
+            }
+        }
+        
+        function calculateAnswer(num1, num2) {
+            if (currentMode === 'addition') {
+                return num1 + num2;
+            } else {
+                return num1 * num2;
+            }
+        }
+        
+        function createGrid() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            gridData = [];
+            
+            // Generate random numbers for top row and first column
+            const topNumbers = [];
+            const leftNumbers = [];
+            
+            for (let i = 0; i < 5; i++) {
+                topNumbers.push(getRandomNumber());
+                leftNumbers.push(getRandomNumber());
+            }
+            
+            // Create 5x5 grid
+            for (let row = 0; row < 5; row++) {
+                gridData[row] = [];
+                for (let col = 0; col < 5; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    
+                    if (row === 0 && col === 0) {
+                        cell.textContent = currentMode === 'addition' ? '+' : '×';
+                        cell.classList.add('edge');
+                    } else if (row === 0) {
+                        cell.textContent = topNumbers[col - 1];
+                        cell.classList.add('edge');
+                    } else if (col === 0) {
+                        cell.textContent = leftNumbers[row - 1];
+                        cell.classList.add('edge');
+                    } else {
+                        const answer = calculateAnswer(leftNumbers[row - 1], topNumbers[col - 1]);
+                        gridData[row][col] = answer;
+                        
+                        cell.classList.add('clickable');
+                        cell.addEventListener('click', () => handleCellClick(cell, row, col));
+                    }
+                    
+                    grid.appendChild(cell);
+                }
+            }
+            
+            totalCells = 16; // 4x4 grid of answers
+            score = 0;
+            updateScore();
+        }
+        
+        function handleCellClick(cell, row, col) {
+            if (cell.classList.contains('correct') || cell.classList.contains('incorrect') || cell.classList.contains('revealed')) {
+                return;
+            }
+            
+            const userAnswer = prompt(`請輸入答案 (正確答案: ${gridData[row][col]})`);
+            
+            if (userAnswer !== null && userAnswer !== '') {
+                const numAnswer = parseInt(userAnswer);
+                if (numAnswer === gridData[row][col]) {
+                    cell.textContent = numAnswer;
+                    cell.classList.add('correct');
+                    score++;
+                } else {
+                    cell.textContent = numAnswer;
+                    cell.classList.add('incorrect');
+                }
+                updateScore();
+            }
+        }
+        
+        function checkAnswers() {
+            const clickableCells = document.querySelectorAll('.cell.clickable');
+            let filledCells = 0;
+            
+            clickableCells.forEach(cell => {
+                if (cell.textContent) {
+                    filledCells++;
+                }
+            });
+            
+            if (filledCells === 0) {
+                alert('請先在空格中填入答案！');
+                return;
+            }
+            
+            const gameInfo = document.getElementById('gameInfo');
+            gameInfo.textContent = `答對 ${score} 題，共 ${filledCells} 題`;
+            
+            if (score === filledCells) {
+                gameInfo.textContent += ' - 太棒了！全部答對！';
+            }
+        }
+        
+        function revealAnswer() {
+            const clickableCells = document.querySelectorAll('.cell.clickable');
+            let revealedCount = 0;
+            
+            for (let cell of clickableCells) {
+                if (!cell.textContent) {
+                    const row = Math.floor(Array.from(cell.parentNode.children).indexOf(cell) / 5);
+                    const col = Array.from(cell.parentNode.children).indexOf(cell) % 5;
+                    
+                    cell.textContent = gridData[row][col];
+                    cell.classList.add('revealed');
+                    revealedCount++;
+                    
+                    if (revealedCount === 1) {
+                        break; // Only reveal one answer at a time
+                    }
+                }
+            }
+            
+            if (revealedCount === 0) {
+                alert('所有答案都已經填寫或顯示了！');
+            }
+        }
+        
+        function updateScore() {
+            const scoreDisplay = document.getElementById('scoreDisplay');
+            scoreDisplay.textContent = `得分: ${score} / 總題數: ${totalCells}`;
+        }
+        
+        function startGame() {
+            createGrid();
+            const gameInfo = document.getElementById('gameInfo');
+            const modeText = currentMode === 'addition' ? '加法' : '乘法';
+            gameInfo.textContent = `${modeText}練習已開始 - 點擊空格填入答案`;
+        }
+        
+        // Initialize the game
+        startGame();
+    </script>
+</body>
+</html>
