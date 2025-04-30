@@ -264,6 +264,76 @@
             cursor: pointer;
         }
         
+        /* 遮罩和彈窗樣式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal {
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 85%;
+            width: 400px;
+            transform: translateY(-20px);
+            transition: transform 0.3s;
+            position: relative;
+        }
+        
+        .modal-overlay.active .modal {
+            transform: translateY(0);
+        }
+        
+        .modal h3 {
+            color: #2c3e50;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+        
+        .modal p {
+            font-size: 1.2em;
+            margin-bottom: 25px;
+            color: #34495e;
+            line-height: 1.6;
+        }
+        
+        .modal button {
+            padding: 12px 25px;
+            margin: 0 10px;
+        }
+        
+        .modal .motivation {
+            font-style: italic;
+            color: #7f8c8d;
+            margin-top: 15px;
+        }
+        
+        .modal .score-highlight {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #3498db;
+            margin: 10px 0;
+        }
+        
         /* 響應式設計 */
         @media (max-width: 480px) {
             .cell .number-input {
@@ -298,6 +368,18 @@
             
             .score-display {
                 font-size: 18px;
+            }
+            
+            .modal {
+                padding: 20px;
+            }
+            
+            .modal h3 {
+                font-size: 1.3em;
+            }
+            
+            .modal p {
+                font-size: 1.1em;
             }
         }
         
@@ -351,9 +433,20 @@
             <li>選擇難度：簡單、中等或困難</li>
             <li>頂行和首列有數字，計算它們的加法或乘法結果</li>
             <li>點擊空白格子，直接輸入答案</li>
-            <li>完成後點擊「檢查答案」查看結果</li>
+            <li>填完後點擊「檢查答案」查看結果</li>
             <li>如需幫助，可點擊「顯示答案」</li>
         </ul>
+    </div>
+    
+    <!-- 結果彈窗 -->
+    <div class="modal-overlay" id="resultModal">
+        <div class="modal">
+            <h3 id="modalTitle">做得好！</h3>
+            <p id="modalMessage">您已完成本輪練習。</p>
+            <div class="score-highlight" id="modalScore">得分: 8 / 16</div>
+            <p class="motivation" id="modalMotivation">每天練習，腦筋更靈活！</p>
+            <button onclick="startNewGame()">再來一輪</button>
+        </div>
     </div>
 
     <script>
@@ -362,13 +455,28 @@
         let score = 0;
         let totalCells = 0;
         let gridData = [];
+        let answersChecked = false;
+        
+        // 鼓勵訊息列表
+        const motivationMessages = [
+            "每天練習，腦筋更靈活！",
+            "您做得很棒！持續練習是進步的關鍵。",
+            "慢慢來，數學能力需要時間培養。",
+            "練習使人進步，明天再來挑戰吧！",
+            "腦力激盪，健康長壽！",
+            "沒關係，重要的是動腦思考的過程。",
+            "下次一定能做得更好！",
+            "恭喜您完成練習，您離目標更近了一步！",
+            "持之以恆，您將會越來越厲害！",
+            "動腦思考是保持大腦年輕的秘訣！"
+        ];
         
         function changeMode(mode) {
             currentMode = mode;
             document.querySelectorAll('.mode-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
+            if (event && event.target) event.target.classList.add('active');
             startGame();
         }
         
@@ -377,7 +485,7 @@
             document.querySelectorAll('.difficulty-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
+            if (event && event.target) event.target.classList.add('active');
             startGame();
         }
         
@@ -406,6 +514,7 @@
             const grid = document.getElementById('grid');
             grid.innerHTML = '';
             gridData = [];
+            answersChecked = false;
             
             // Generate random numbers for top row and first column
             const topNumbers = [];
@@ -460,11 +569,6 @@
                             this.value = this.value.replace(/[^0-9]/g, '');
                         });
                         
-                        // 輸入完成時檢查答案
-                        input.addEventListener('change', function() {
-                            checkInputAnswer(input, row, col);
-                        });
-                        
                         cell.appendChild(input);
                     }
                     
@@ -478,43 +582,36 @@
             updateScore();
         }
         
-        function checkInputAnswer(input, row, col) {
-            const cell = input.parentNode;
-            
-            // 如果單元格已經被判定過，不再處理
-            if (cell.classList.contains('correct') || cell.classList.contains('incorrect') || cell.classList.contains('revealed')) {
-                return;
-            }
-            
-            // 取得用戶答案
-            const userAnswer = parseInt(input.value);
-            
-            // 確保有輸入
-            if (isNaN(userAnswer) || input.value.trim() === '') {
-                return;
-            }
-            
-            // 檢查答案
-            if (userAnswer === gridData[row][col]) {
-                cell.classList.add('correct');
-                score++;
-                updateScore();
-            } else {
-                cell.classList.add('incorrect');
-            }
-        }
-        
         function checkAnswers() {
+            if (answersChecked) {
+                // 如果已經檢查過了，直接顯示結果彈窗
+                showResultModal();
+                return;
+            }
+            
             const inputs = document.querySelectorAll('.number-input');
             let filledInputs = 0;
+            score = 0;
             
-            inputs.forEach(input => {
+            inputs.forEach((input, index) => {
                 if (input.value.trim() !== '') {
                     filledInputs++;
                     
-                    // 觸發每個輸入框的答案檢查
-                    const event = new Event('change');
-                    input.dispatchEvent(event);
+                    // 計算行和列
+                    const row = Math.floor(index / 4) + 1; // +1 因為頂行是標題
+                    const col = (index % 4) + 1; // +1 因為首列是標題
+                    
+                    // 檢查答案
+                    const userAnswer = parseInt(input.value);
+                    const correctAnswer = gridData[row][col];
+                    const cell = input.parentNode;
+                    
+                    if (userAnswer === correctAnswer) {
+                        cell.classList.add('correct');
+                        score++;
+                    } else {
+                        cell.classList.add('incorrect');
+                    }
                 }
             });
             
@@ -523,45 +620,119 @@
                 return;
             }
             
-            const gameInfo = document.getElementById('gameInfo');
-            gameInfo.textContent = `答對 ${score} 題，共 ${filledInputs} 題`;
+            // 更新得分
+            updateScore();
             
-            if (score === filledInputs && filledInputs > 0) {
-                gameInfo.textContent += ' - 太棒了！全部答對！';
-            }
+            // 標記已檢查
+            answersChecked = true;
+            
+            // 顯示結果彈窗
+            showResultModal();
         }
         
         function revealAnswer() {
-            const cells = document.querySelectorAll('.cell.clickable');
-            let revealedCount = 0;
-            
-            for (let cell of cells) {
-                const input = cell.querySelector('.number-input');
+            if (!answersChecked) {
+                const cells = document.querySelectorAll('.cell.clickable');
+                let revealedCount = 0;
                 
-                // 如果這個格子是空的或者答錯的
-                if (input.value.trim() === '' || (cell.classList.contains('incorrect') && !cell.classList.contains('revealed'))) {
-                    const row = Math.floor(Array.from(cell.parentNode.children).indexOf(cell) / 5);
-                    const col = Array.from(cell.parentNode.children).indexOf(cell) % 5;
+                for (let cell of cells) {
+                    const input = cell.querySelector('.number-input');
+                    
+                    // 如果這個格子是空的
+                    if (input.value.trim() === '') {
+                        const idx = Array.from(cells).indexOf(cell);
+                        const row = Math.floor(idx / 4) + 1;
+                        const col = (idx % 4) + 1;
+                        
+                        input.value = gridData[row][col];
+                        cell.classList.add('revealed');
+                        revealedCount++;
+                        
+                        if (revealedCount === 1) {
+                            break; // 每次只顯示一個答案
+                        }
+                    }
+                }
+                
+                if (revealedCount === 0) {
+                    alert('所有格子都已經填寫！');
+                }
+            } else {
+                // 如果已經檢查過答案，顯示未填或錯誤的答案
+                const incorrectCells = document.querySelectorAll('.cell.incorrect');
+                const emptyCells = document.querySelectorAll('.cell.clickable:not(.correct):not(.incorrect):not(.revealed)');
+                
+                if (incorrectCells.length > 0) {
+                    // 優先顯示錯誤的答案
+                    const cell = incorrectCells[0];
+                    const input = cell.querySelector('.number-input');
+                    const idx = Array.from(document.querySelectorAll('.cell.clickable')).indexOf(cell);
+                    const row = Math.floor(idx / 4) + 1;
+                    const col = (idx % 4) + 1;
                     
                     input.value = gridData[row][col];
                     cell.classList.remove('incorrect');
                     cell.classList.add('revealed');
-                    revealedCount++;
+                } else if (emptyCells.length > 0) {
+                    // 如果沒有錯誤的，顯示未填的
+                    const cell = emptyCells[0];
+                    const input = cell.querySelector('.number-input');
+                    const idx = Array.from(document.querySelectorAll('.cell.clickable')).indexOf(cell);
+                    const row = Math.floor(idx / 4) + 1;
+                    const col = (idx % 4) + 1;
                     
-                    if (revealedCount === 1) {
-                        break; // 每次只顯示一個答案
-                    }
+                    input.value = gridData[row][col];
+                    cell.classList.add('revealed');
+                } else {
+                    alert('所有答案都已經顯示了！');
                 }
-            }
-            
-            if (revealedCount === 0) {
-                alert('所有答案都已經填寫或顯示了！');
             }
         }
         
         function updateScore() {
             const scoreDisplay = document.getElementById('scoreDisplay');
             scoreDisplay.textContent = `得分: ${score} / 總題數: ${totalCells}`;
+        }
+        
+        function showResultModal() {
+            const modal = document.getElementById('resultModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const modalScore = document.getElementById('modalScore');
+            const modalMotivation = document.getElementById('modalMotivation');
+            
+            // 設置標題和訊息
+            if (score === totalCells) {
+                modalTitle.textContent = "太棒了！全部答對！";
+                modalMessage.textContent = "您的數學能力真是驚人！";
+            } else if (score >= totalCells * 0.7) {
+                modalTitle.textContent = "做得很好！";
+                modalMessage.textContent = "您的數學能力相當不錯！";
+            } else if (score >= totalCells * 0.4) {
+                modalTitle.textContent = "做得不錯！";
+                modalMessage.textContent = "繼續努力，您會越來越進步！";
+            } else {
+                modalTitle.textContent = "謝謝參與！";
+                modalMessage.textContent = "數學需要練習，別放棄！";
+            }
+            
+            // 設置分數
+            modalScore.textContent = `得分: ${score} / ${totalCells}`;
+            
+            // 隨機選擇一句鼓勵訊息
+            const randomIndex = Math.floor(Math.random() * motivationMessages.length);
+            modalMotivation.textContent = motivationMessages[randomIndex];
+            
+            // 顯示彈窗
+            modal.classList.add('active');
+        }
+        
+        function startNewGame() {
+            // 隱藏彈窗
+            document.getElementById('resultModal').classList.remove('active');
+            
+            // 開始新遊戲
+            startGame();
         }
         
         function startGame() {
@@ -574,6 +745,13 @@
         // 初始化遊戲
         window.onload = function() {
             startGame();
+            
+            // 為彈窗外點擊添加關閉功能
+            document.getElementById('resultModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('active');
+                }
+            });
         };
     </script>
 </body>
