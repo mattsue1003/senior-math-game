@@ -241,8 +241,35 @@
             border-color: #357abd;
         }
         
+        .number-input {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            border: none;
+            background: transparent;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            font-family: Microsoft JhengHei, Arial, sans-serif;
+            outline: none;
+            border-radius: 10px;
+            padding: 0;
+            box-sizing: border-box;
+            z-index: 2;
+        }
+        
+        .cell.clickable .number-input {
+            cursor: pointer;
+        }
+        
         /* 響應式設計 */
         @media (max-width: 480px) {
+            .cell .number-input {
+                font-size: 18px;
+            }
+            
             .cell {
                 font-size: 18px;
             }
@@ -276,6 +303,10 @@
         
         /* 極小屏幕適配 */
         @media (max-width: 350px) {
+            .cell .number-input {
+                font-size: 16px;
+            }
+            
             .cell {
                 font-size: 16px;
             }
@@ -301,7 +332,7 @@
         <button class="difficulty-btn" onclick="setDifficulty('hard')">困難 (1-20)</button>
     </div>
     
-    <div class="game-info" id="gameInfo">點擊開始遊戲，填入空格中的正確答案</div>
+    <div class="game-info" id="gameInfo">點擊空格填入答案</div>
     
     <div class="grid" id="grid"></div>
     
@@ -319,7 +350,7 @@
             <li>選擇練習模式：加法或乘法</li>
             <li>選擇難度：簡單、中等或困難</li>
             <li>頂行和首列有數字，計算它們的加法或乘法結果</li>
-            <li>點擊空白格子，輸入正確答案</li>
+            <li>點擊空白格子，直接輸入答案</li>
             <li>完成後點擊「檢查答案」查看結果</li>
             <li>如需幫助，可點擊「顯示答案」</li>
         </ul>
@@ -410,7 +441,31 @@
                         gridData[row][col] = answer;
                         
                         cell.classList.add('clickable');
-                        cell.addEventListener('click', () => handleCellClick(cellContent, row, col));
+                        
+                        // 創建輸入框
+                        const input = document.createElement('input');
+                        input.type = 'tel'; // 使用tel類型以在手機上顯示數字鍵盤
+                        input.maxLength = 3;
+                        input.className = 'number-input';
+                        input.setAttribute('inputmode', 'numeric');
+                        input.setAttribute('pattern', '[0-9]*');
+                        
+                        // 輸入框聚焦時選中所有內容
+                        input.addEventListener('focus', function() {
+                            this.select();
+                        });
+                        
+                        // 輸入時檢查是否為數字
+                        input.addEventListener('input', function() {
+                            this.value = this.value.replace(/[^0-9]/g, '');
+                        });
+                        
+                        // 輸入完成時檢查答案
+                        input.addEventListener('change', function() {
+                            checkInputAnswer(input, row, col);
+                        });
+                        
+                        cell.appendChild(input);
                     }
                     
                     cell.appendChild(cellContent);
@@ -423,67 +478,78 @@
             updateScore();
         }
         
-        function handleCellClick(cellContent, row, col) {
-            const cell = cellContent.parentNode;
+        function checkInputAnswer(input, row, col) {
+            const cell = input.parentNode;
+            
+            // 如果單元格已經被判定過，不再處理
             if (cell.classList.contains('correct') || cell.classList.contains('incorrect') || cell.classList.contains('revealed')) {
                 return;
             }
             
-            const userAnswer = prompt(`請輸入答案 (正確答案: ${gridData[row][col]})`);
+            // 取得用戶答案
+            const userAnswer = parseInt(input.value);
             
-            if (userAnswer !== null && userAnswer !== '') {
-                const numAnswer = parseInt(userAnswer);
-                if (numAnswer === gridData[row][col]) {
-                    cellContent.textContent = numAnswer;
-                    cell.classList.add('correct');
-                    score++;
-                } else {
-                    cellContent.textContent = numAnswer;
-                    cell.classList.add('incorrect');
-                }
+            // 確保有輸入
+            if (isNaN(userAnswer) || input.value.trim() === '') {
+                return;
+            }
+            
+            // 檢查答案
+            if (userAnswer === gridData[row][col]) {
+                cell.classList.add('correct');
+                score++;
                 updateScore();
+            } else {
+                cell.classList.add('incorrect');
             }
         }
         
         function checkAnswers() {
-            const clickableCells = document.querySelectorAll('.cell.clickable');
-            let filledCells = 0;
+            const inputs = document.querySelectorAll('.number-input');
+            let filledInputs = 0;
             
-            clickableCells.forEach(cell => {
-                if (cell.querySelector('.cell-content').textContent) {
-                    filledCells++;
+            inputs.forEach(input => {
+                if (input.value.trim() !== '') {
+                    filledInputs++;
+                    
+                    // 觸發每個輸入框的答案檢查
+                    const event = new Event('change');
+                    input.dispatchEvent(event);
                 }
             });
             
-            if (filledCells === 0) {
+            if (filledInputs === 0) {
                 alert('請先在空格中填入答案！');
                 return;
             }
             
             const gameInfo = document.getElementById('gameInfo');
-            gameInfo.textContent = `答對 ${score} 題，共 ${filledCells} 題`;
+            gameInfo.textContent = `答對 ${score} 題，共 ${filledInputs} 題`;
             
-            if (score === filledCells) {
+            if (score === filledInputs && filledInputs > 0) {
                 gameInfo.textContent += ' - 太棒了！全部答對！';
             }
         }
         
         function revealAnswer() {
-            const clickableCells = document.querySelectorAll('.cell.clickable');
+            const cells = document.querySelectorAll('.cell.clickable');
             let revealedCount = 0;
             
-            for (let cell of clickableCells) {
-                const cellContent = cell.querySelector('.cell-content');
-                if (!cellContent.textContent) {
+            for (let cell of cells) {
+                const input = cell.querySelector('.number-input');
+                
+                // 如果這個格子是空的或者答錯的
+                if (input.value.trim() === '' || (cell.classList.contains('incorrect') && !cell.classList.contains('revealed'))) {
                     const row = Math.floor(Array.from(cell.parentNode.children).indexOf(cell) / 5);
                     const col = Array.from(cell.parentNode.children).indexOf(cell) % 5;
                     
-                    cellContent.textContent = gridData[row][col];
+                    input.value = gridData[row][col];
+                    cell.classList.remove('incorrect');
                     cell.classList.add('revealed');
                     revealedCount++;
                     
                     if (revealedCount === 1) {
-                        break; // Only reveal one answer at a time
+                        break; // 每次只顯示一個答案
                     }
                 }
             }
@@ -505,7 +571,7 @@
             gameInfo.textContent = `${modeText}練習已開始 - 點擊空格填入答案`;
         }
         
-        // Initialize the game
+        // 初始化遊戲
         window.onload = function() {
             startGame();
         };
